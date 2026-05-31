@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth';
-import { createRepo, createBackdatedCommit, getUserEmails } from '@/lib/github';
-import { generateProjectStructure, generateFileContent } from '@/lib/gemini';
+import { createRepo, createBackdatedCommit, getUserEmails, createIssue } from '@/lib/github';
+import { generateProjectStructure, generateFileContent, generateFakeIssues } from '@/lib/gemini';
 import { scheduleCommits } from '@/lib/commit-scheduler';
 
 export const maxDuration = 300;
@@ -299,6 +299,26 @@ export async function POST(request) {
                 message: `Commit ${ci + 1} failed: ${error.message}`,
               });
             }
+          }
+
+          // 3f. Generate and create fake issues
+          sendEvent({
+            type: 'progress',
+            project: repoName,
+            step: 'creating-issues',
+            message: 'Generating fake issues...',
+            progress: Math.round(((pi + 0.95) / totalProjects) * 100),
+            projectProgress: 95,
+          });
+
+          try {
+            const fakeIssues = await generateFakeIssues(geminiApiKey, name, description, techStack);
+            for (const issue of fakeIssues) {
+              await createIssue(accessToken, owner, repoName, issue.title, issue.body, issue.labels);
+              await sleep(500); // rate limiting
+            }
+          } catch (error) {
+            console.error(`[generate] Failed to create fake issues:`, error);
           }
 
           sendEvent({
