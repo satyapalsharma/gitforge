@@ -1113,6 +1113,7 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
           geminiApiKey: geminiKey,
           persona: persona,
           scheduleProfile: scheduleProfile,
+          completedProjects: progress.completedRepos.map(r => r.name),
         }),
       });
 
@@ -1121,7 +1122,15 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          setProgress(prev => {
+             if (prev.status === 'running') {
+                return { ...prev, status: 'disconnected', error: 'Connection dropped prematurely.' };
+             }
+             return prev;
+          });
+          break;
+        }
 
         const text = decoder.decode(value);
         const lines = text.split('\n').filter(l => l.startsWith('data: '));
@@ -1197,8 +1206,30 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
           {progress.status === 'idle' ? `${selectedProjects.length} projects will be created and committed to your GitHub.` :
             progress.status === 'running' ? `Working on: ${progress.currentProject}` :
               progress.status === 'completed' ? 'All projects have been generated and committed!' :
+                progress.status === 'disconnected' ? 'The generation process disconnected prematurely.' :
                 progress.error}
         </p>
+
+        {(progress.status === 'failed' || progress.status === 'disconnected') && (
+          <button
+            onClick={startGeneration}
+            style={{
+              marginTop: 'var(--space-4)',
+              padding: '10px 24px',
+              background: 'var(--gradient-primary)',
+              borderRadius: 'var(--radius-md)',
+              color: 'white',
+              fontWeight: 700,
+              border: 'none',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <Icons.Zap /> {progress.status === 'disconnected' ? 'Resume Generation' : 'Retry'}
+          </button>
+        )}
       </div>
 
       {/* Start Button */}

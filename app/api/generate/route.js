@@ -3,6 +3,8 @@ import { createRepo, createBackdatedCommit, getUserEmails } from '@/lib/github';
 import { generateProjectStructure, generateFileContent } from '@/lib/gemini';
 import { scheduleCommits } from '@/lib/commit-scheduler';
 
+export const maxDuration = 300;
+
 /**
  * POST /api/generate
  *
@@ -40,9 +42,14 @@ export async function POST(request) {
     );
   }
 
-  const { projects, startDate, endDate, geminiApiKey, persona = 'professional', scheduleProfile = 'balanced' } = body;
+  const { projects, startDate, endDate, geminiApiKey, persona = 'professional', scheduleProfile = 'balanced', completedProjects = [] } = body;
 
-  if (!projects || !Array.isArray(projects) || projects.length === 0) {
+  const projectsToProcess = projects.filter(p => {
+    const repoName = p.name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
+    return !completedProjects.includes(repoName);
+  });
+
+  if (!projectsToProcess || !Array.isArray(projectsToProcess) || projectsToProcess.length === 0) {
     return Response.json(
       { error: 'projects array is required and must not be empty' },
       { status: 400 }
@@ -110,10 +117,10 @@ export async function POST(request) {
           progress: 0,
         });
 
-        const totalProjects = projects.length;
+        const totalProjects = projectsToProcess.length;
 
         for (let pi = 0; pi < totalProjects; pi++) {
-          const project = projects[pi];
+          const project = projectsToProcess[pi];
           const { name, description, techStack } = project;
           const repoName = name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
 
