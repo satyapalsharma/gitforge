@@ -732,7 +732,7 @@ function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedPro
 /* ================================================================
    STEP 3: Review Estimates & Date Range
    ================================================================ */
-function StepReviewEstimate({ selectedProjects, dateRange, setDateRange, persona, setPersona, scheduleProfile, setScheduleProfile, onNext, onBack, setSelectedProjects }) {
+function StepReviewEstimate({ selectedProjects, dateRange, setDateRange, persona, setPersona, scheduleProfile, setScheduleProfile, simulatePRs, setSimulatePRs, onNext, onBack, setSelectedProjects }) {
   const [estimates, setEstimates] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -917,6 +917,21 @@ function StepReviewEstimate({ selectedProjects, dateRange, setDateRange, persona
               <option value="weekend-warrior">Weekend Warrior (Heavy weekends + some evenings)</option>
               <option value="night-owl">Night Owl (Late night coding sessions)</option>
             </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={simulatePRs} 
+                onChange={(e) => setSimulatePRs(e.target.checked)} 
+                style={{ width: '18px', height: '18px', accentColor: 'var(--accent-purple)' }}
+              />
+              Simulate Pull Requests
+            </label>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-xs)', paddingLeft: '28px', marginTop: 0 }}>
+              Instead of pushing directly to main, generate feature branches and simulate merging Pull Requests to reflect a collaborative workflow.
+            </p>
           </div>
 
           {/* Contribution Preview */}
@@ -1565,6 +1580,7 @@ export default function DashboardClient({ session }) {
   });
   const [persona, setPersona] = useState('professional');
   const [scheduleProfile, setScheduleProfile] = useState('balanced');
+  const [simulatePRs, setSimulatePRs] = useState(false);
 
   const goNext = useCallback(() => {
     setCurrentStep(prev => Math.min(prev + 1, 3));
@@ -1670,6 +1686,8 @@ export default function DashboardClient({ session }) {
             setPersona={setPersona}
             scheduleProfile={scheduleProfile}
             setScheduleProfile={setScheduleProfile}
+            simulatePRs={simulatePRs}
+            setSimulatePRs={setSimulatePRs}
             onNext={goNext}
             onBack={goBack}
             setSelectedProjects={setSelectedProjects}
@@ -1683,6 +1701,7 @@ export default function DashboardClient({ session }) {
             session={session}
             persona={persona}
             scheduleProfile={scheduleProfile}
+            simulatePRs={simulatePRs}
           />
         )}
       </main>

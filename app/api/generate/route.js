@@ -42,7 +42,14 @@ export async function POST(request) {
     );
   }
 
-  const { projects, startDate, endDate, geminiApiKey, persona = 'professional', scheduleProfile = 'balanced', completedProjects = [] } = body;
+  const projects = body.projects;
+  const startDate = body.startDate;
+  const endDate = body.endDate;
+  const geminiApiKey = body.geminiApiKey;
+  const completedProjects = body.completedProjects || [];
+  const persona = body.persona || 'professional';
+  const scheduleProfile = body.scheduleProfile || 'balanced';
+  const simulatePRs = body.simulatePRs || false;
 
   const projectsToProcess = projects.filter(p => {
     const repoName = p.name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
@@ -272,7 +279,8 @@ export async function POST(request) {
                   generatedCommitFiles,
                   commitMessage,
                   commitDate,
-                  userEmail
+                  userEmail,
+                  simulatePRs
                 );
 
                 sendEvent({
