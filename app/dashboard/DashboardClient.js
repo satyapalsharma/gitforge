@@ -263,20 +263,27 @@ function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedPro
   const [difficultyFilter, setDifficultyFilter] = useState('all');
   const [customComplexity, setCustomComplexity] = useState('medium');
 
-  const fetchSuggestions = useCallback(async (shuffle = false) => {
+  const fetchSuggestions = useCallback(async () => {
     setLoading(true);
     try {
-      const url = `/api/projects/suggest?skills=${selectedSkills.join(',')}${shuffle ? `&shuffle=${Date.now()}` : ''}`;
+      // Always fetch all matching projects for the skills
+      const url = `/api/projects/suggest?skills=${selectedSkills.join(',')}`;
       const res = await fetch(url);
       const data = await res.json();
       let projects = data.projects || [];
-      if (shuffle) {
-        // Fisher-Yates shuffle
-        for (let i = projects.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [projects[i], projects[j]] = [projects[j], projects[i]];
-        }
+      
+      // We always shuffle the array to give a random feel, especially on "Refresh"
+      for (let i = projects.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [projects[i], projects[j]] = [projects[j], projects[i]];
       }
+
+      // If we have a lot of projects, just show 8 at a time so the UI isn't cluttered
+      // and "Shuffle/Refresh" actually shows a different set of projects.
+      if (projects.length > 8) {
+        projects = projects.slice(0, 8);
+      }
+      
       setSuggestions(projects);
     } catch (e) {
       console.error('Failed to fetch suggestions:', e);
