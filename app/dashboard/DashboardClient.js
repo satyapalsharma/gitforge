@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { signOut } from 'next-auth/react';
 
 /* ================================================================
@@ -1183,7 +1183,7 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
     completedRepos: [],
     error: null,
   });
-  const [cachedStructures, setCachedStructures] = useState({});
+  const cachedStructuresRef = useRef({});
 
   const startGeneration = useCallback(async () => {
     setProgress(prev => ({ ...prev, status: 'running', logs: [...prev.logs, { time: new Date().toISOString(), msg: '🚀 Starting generation pipeline...' }] }));
@@ -1201,7 +1201,7 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
           scheduleProfile: scheduleProfile,
           simulatePRs: simulatePRs,
           completedProjects: progress.completedRepos.map(r => r.name),
-          cachedStructures: cachedStructures,
+          cachedStructures: cachedStructuresRef.current,
         }),
       });
 
@@ -1227,9 +1227,8 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
           try {
             const data = JSON.parse(line.replace('data: ', ''));
 
-            // Cache the project structure for resume
             if (data.type === 'structure-cached' && data.project && data.structure) {
-              setCachedStructures(prev => ({ ...prev, [data.project]: data.structure }));
+              cachedStructuresRef.current = { ...cachedStructuresRef.current, [data.project]: data.structure };
             }
 
             setProgress(prev => {
