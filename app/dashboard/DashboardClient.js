@@ -334,6 +334,36 @@ function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedPro
     setShowCustomForm(false);
   }, [customName, customDesc, customTech, customComplexity, setSelectedProjects]);
 
+  const exportProfile = useCallback(() => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(selectedProjects));
+    const a = document.createElement('a');
+    a.href = dataStr;
+    a.download = "gitforge_profile.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }, [selectedProjects]);
+
+  const importProfile = useCallback((event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const imported = JSON.parse(e.target.result);
+        if (Array.isArray(imported)) {
+          setSelectedProjects(imported);
+        } else {
+          alert('Invalid profile format');
+        }
+      } catch (err) {
+        alert('Failed to parse profile file');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }, [setSelectedProjects]);
+
   const difficulties = [
     { value: 'all', label: 'All', icon: '🎯' },
     { value: 'simple', label: 'Simple', icon: '🟢' },
@@ -377,6 +407,44 @@ function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedPro
           >
             🔀 Shuffle
           </button>
+          
+          <button
+            onClick={exportProfile}
+            style={{
+              padding: '10px 16px',
+              background: 'var(--surface-default)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--text-primary)',
+              fontWeight: 600,
+              fontSize: 'var(--text-sm)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+            title="Export selected projects as a preset"
+          >
+            💾 Export
+          </button>
+          
+          <label style={{
+              padding: '10px 16px',
+              background: 'var(--surface-default)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--text-primary)',
+              fontWeight: 600,
+              fontSize: 'var(--text-sm)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+          }}>
+            📁 Import
+            <input type="file" accept=".json" onChange={importProfile} style={{ display: 'none' }} />
+          </label>
+
           <button
             id="add-custom-project-btn"
             onClick={() => setShowCustomForm(!showCustomForm)}
