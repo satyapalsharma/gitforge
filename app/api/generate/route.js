@@ -152,6 +152,12 @@ export async function POST(request) {
             projectProgress: 5,
           });
 
+          const otherProjects = projectsToProcess.filter((p, i) => i !== pi).map(p => p.name);
+          let interconnectivityContext = '';
+          if (otherProjects.length > 0) {
+            interconnectivityContext = `This project is part of a larger interconnected system being generated, which includes: ${otherProjects.join(', ')}. Where appropriate (e.g., in README, API endpoints, package configs, or env variables), add configuration or mentions that reference these other services to simulate microservice/interconnected architecture.`;
+          }
+
           let fileStructure;
           try {
             fileStructure = await generateProjectStructure(
@@ -159,7 +165,8 @@ export async function POST(request) {
               name,
               description,
               techStack || [],
-              project.estimatedComplexity || 'medium'
+              project.estimatedComplexity || 'medium',
+              interconnectivityContext
             );
           } catch (error) {
             sendEvent({
@@ -248,7 +255,8 @@ export async function POST(request) {
                     name,
                     file.path,
                     projectContext,
-                    project.estimatedComplexity || 'medium'
+                    project.estimatedComplexity || 'medium',
+                    interconnectivityContext
                   );
 
                   generatedCommitFiles.push({
