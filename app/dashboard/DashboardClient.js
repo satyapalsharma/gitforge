@@ -857,6 +857,7 @@ function StepReviewEstimate({ selectedProjects, dateRange, setDateRange, persona
               <h3 style={{ fontWeight: 700, marginBottom: 'var(--space-4)', fontSize: 'var(--text-lg)' }}>
                 Contribution Preview
               </h3>
+              <PreviewAnalytics data={previewData} />
               <MiniContributionGraph data={previewData} />
             </div>
           )}
@@ -952,6 +953,58 @@ function StepReviewEstimate({ selectedProjects, dateRange, setDateRange, persona
 /* ================================================================
    Mini Contribution Graph (Preview in Step 3)
    ================================================================ */
+function PreviewAnalytics({ data }) {
+  const totalCommits = data.reduce((sum, d) => sum + d.count, 0);
+  const activeDays = data.filter((d) => d.count > 0).length;
+  const maxCommits = Math.max(...data.map((d) => d.count), 0);
+  
+  let currentStreak = 0;
+  let maxStreak = 0;
+  data.forEach((d) => {
+    if (d.count > 0) {
+      currentStreak++;
+      if (currentStreak > maxStreak) maxStreak = currentStreak;
+    } else {
+      currentStreak = 0;
+    }
+  });
+
+  const cardStyle = {
+    background: 'var(--bg-tertiary)',
+    border: '1px solid var(--border-default)',
+    borderRadius: 'var(--radius-md)',
+    padding: 'var(--space-3)',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+  };
+
+  const labelStyle = { fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' };
+  const valueStyle = { fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--text-primary)' };
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+      <div style={cardStyle}>
+        <div style={labelStyle}>Total Commits</div>
+        <div style={valueStyle}>{totalCommits}</div>
+      </div>
+      <div style={cardStyle}>
+        <div style={labelStyle}>Active Days</div>
+        <div style={valueStyle}>{activeDays}</div>
+      </div>
+      <div style={cardStyle}>
+        <div style={labelStyle}>Longest Streak</div>
+        <div style={valueStyle}>{maxStreak} <span style={{fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)'}}>days</span></div>
+      </div>
+      <div style={cardStyle}>
+        <div style={labelStyle}>Busiest Day</div>
+        <div style={valueStyle}>{maxCommits} <span style={{fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)'}}>commits</span></div>
+      </div>
+    </div>
+  );
+}
+
 function MiniContributionGraph({ data }) {
   const colors = ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353'];
 
