@@ -1,0 +1,134 @@
+/* ── Base Button ────────────────────────────────────────── */
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  user-select: none;
+  outline: none;
+  text-decoration: none;
+  line-height: 1;
+}
+
+.button:focus-visible {
+  box-shadow: 0 0 0 2px #0d1117, 0 0 0 4px #7c3aed;
+}
+
+.button:disabled,
+.button.loading {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Sizes ──────────────────────────────────────────────── */
+.sm {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.md {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+
+.lg {
+  height: 44px;
+  padding: 0 24px;
+  font-size: 16px;
+  border-radius: 10px;
+}
+
+/* ── Variant: Primary (gradient) ───────────────────────── */
+.primary {
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(124, 58, 237, 0.25);
+}
+
+.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #6d28d9, #1d4ed8);
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+  transform: translateY(-1px);
+}
+
+.primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(124, 58, 237, 0.25);
+}
+
+/* ── Variant: Secondary (outline) ──────────────────────── */
+.secondary {
+  background: transparent;
+  color: #e6edf3;
+  border: 1px solid #30363d;
+}
+
+.secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: #8b949e;
+}
+
+.secondary:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ── Variant: Ghost ────────────────────────────────────── */
+.ghost {
+  background: transparent;
+  color: #8b949e;
+}
+
+.ghost:hover:not(:disabled) {
+  color: #e6edf3;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ghost:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Variant: Danger ───────────────────────────────────── */
+.danger {
+  background: rgba(248, 81, 73, 0.15);
+  color: #f85149;
+  border: 1px solid rgba(248, 81, 73, 0.3);
+}
+
+.danger:hover:not(:disabled) {
+  background: rgba(248, 81, 73, 0.25);
+  border-color: rgba(248, 81, 73, 0.5);
+}
+
+.danger:active:not(:disabled) {
+  background: rgba(248, 81, 73, 0.3);
+}
+
+/* ── Full Width ─────────────────────────────────────────── */
+.fullWidth {
+  width: 100%;
+}
+
+/* ── Loading content hiding ─────────────────────────────── */
+.contentHidden {
+  visibility: hidden;
+}
+
+.spinnerWrapper {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
