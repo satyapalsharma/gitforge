@@ -440,26 +440,35 @@ function generateCommitMessage(files, isInitial, persona = 'professional') {
   const hasDocs = filePaths.some((p) => p.includes('README') || p.includes('docs'));
   const hasConfig = filePaths.some((p) => p.includes('config') || p.includes('.env'));
 
-  if (hasTests) return template.tests;
-  if (hasStyles) return template.styles;
-  if (hasDocs) return template.docs;
-  if (hasConfig) return template.config;
+  let baseMessage = template.fallback(files.length);
 
-  // Describe based on directory
-  const dirs = [...new Set(filePaths.map((p) => p.split('/')[0]))];
-  if (dirs.length === 1 && dirs[0] === 'src') {
-    return template.core;
+  if (hasTests) {
+    baseMessage = template.tests;
+  } else if (hasStyles) {
+    baseMessage = template.styles;
+  } else if (hasDocs) {
+    baseMessage = template.docs;
+  } else if (hasConfig) {
+    baseMessage = template.config;
+  } else {
+    // Describe based on directory
+    const dirs = [...new Set(filePaths.map((p) => p.split('/')[0]))];
+    if (dirs.length === 1 && dirs[0] === 'src') {
+      baseMessage = template.core;
+    } else if (files.length === 1) {
+      const prefixes = template.prefixes;
+      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+      const filename = filePaths[0].split('/').pop();
+      baseMessage = `${prefix} ${filename}`;
+    }
   }
 
-  const prefixes = template.prefixes;
-  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-
-  if (files.length === 1) {
-    const filename = filePaths[0].split('/').pop();
-    return `${prefix} ${filename}`;
+  // 25% chance to simulate a co-authored commit
+  if (Math.random() < 0.25) {
+    baseMessage += '\n\nCo-authored-by: GitForge AI <bot@gitforge.dev>';
   }
 
-  return template.fallback(files.length);
+  return baseMessage;
 }
 
 /**
