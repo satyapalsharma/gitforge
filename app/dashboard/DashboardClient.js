@@ -1278,24 +1278,27 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
                 progress.error}
         </p>
 
-        {(progress.status === 'failed' || progress.status === 'disconnected') && (
+        {(progress.status === 'failed' || progress.status === 'disconnected' || progress.status === 'running') && (
           <button
             onClick={startGeneration}
             style={{
               marginTop: 'var(--space-4)',
               padding: '10px 24px',
-              background: 'var(--gradient-primary)',
+              background: progress.status === 'running' ? 'transparent' : 'var(--gradient-primary)',
+              border: progress.status === 'running' ? '1px solid var(--border-default)' : 'none',
               borderRadius: 'var(--radius-md)',
-              color: 'white',
+              color: progress.status === 'running' ? 'var(--text-secondary)' : 'white',
               fontWeight: 700,
-              border: 'none',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
             }}
           >
-            <Icons.Zap /> {progress.status === 'disconnected' ? 'Resume Generation' : 'Retry'}
+            <Icons.Zap /> {
+              progress.status === 'running' ? 'Force Resume (If Stuck)' :
+              progress.status === 'disconnected' ? 'Resume Generation' : 'Retry'
+            }
           </button>
         )}
       </div>

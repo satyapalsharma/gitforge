@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth';
-import { createRepo, createBackdatedCommit, getUserEmails, createIssue } from '@/lib/github';
+import { createRepo, createBackdatedCommit, getUserEmails, createIssue, getRepoTree } from '@/lib/github';
 import { generateProjectStructure, generateFileContent, generateFakeIssues } from '@/lib/gemini';
 import { scheduleCommits } from '@/lib/commit-scheduler';
 
@@ -163,66 +163,14 @@ export async function POST(request) {
             continue; // Skip this project, continue with next
           }
 
-          // 3b. Generate file contents via Gemini
-          const projectContext = `Project: ${name}\nDescription: ${description}\nTech Stack: ${(techStack || []).join(', ')}\nFiles: ${fileStructure.map((f) => f.path).join(', ')}`;
-
-          const generatedFiles = [];
-          for (let fi = 0; fi < fileStructure.length; fi++) {
-            const file = fileStructure[fi];
-
-            sendEvent({
-              type: 'progress',
-              project: repoName,
-              step: 'generating',
-              file: file.path,
-              message: `Generating ${file.path}...`,
-              fileIndex: fi + 1,
-              totalFiles: fileStructure.length,
-              progress: Math.round(((pi + 0.2 + (0.4 * fi / fileStructure.length)) / totalProjects) * 100),
-              projectProgress: Math.round(10 + (50 * (fi + 1) / fileStructure.length)),
-            });
-
-            try {
-              const content = await generateFileContent(
-                geminiApiKey,
-                name,
-                file.path,
-                projectContext,
-                project.estimatedComplexity || 'medium'
-              );
-
-              generatedFiles.push({
-                path: file.path,
-                content,
-              });
-            } catch (error) {
-              console.error(`[generate] Failed to generate ${file.path}:`, error);
-              sendEvent({
-                type: 'warning',
-                project: repoName,
-                file: file.path,
-                message: `Skipped ${file.path}: ${error.message}`,
-              });
-            }
-          }
-
-          if (generatedFiles.length === 0) {
-            sendEvent({
-              type: 'error',
-              project: repoName,
-              message: 'No files were generated. Skipping repo creation.',
-            });
-            continue;
-          }
-
-          // 3c. Create a GitHub repo
+          // 3b. Create the GitHub repo immediately
           sendEvent({
             type: 'progress',
             project: repoName,
             step: 'creating-repo',
             message: `Creating GitHub repository: ${repoName}...`,
-            progress: Math.round(((pi + 0.65) / totalProjects) * 100),
-            projectProgress: 60,
+            progress: Math.round(((pi + 0.15) / totalProjects) * 100),
+            projectProgress: 10,
           });
 
           let repo;
@@ -237,67 +185,114 @@ export async function POST(request) {
             continue;
           }
 
-          // Wait a moment for GitHub to initialize the repo
-          await sleep(2000);
+          await sleep(1000);
 
-          // 3d. Schedule commits across date range
-          const totalCommits = Math.max(
-            3,
-            Math.ceil(generatedFiles.length / 2) + 2
-          );
-          const commitDates = scheduleCommits(startDate, endDate, totalCommits, scheduleProfile);
+          // 3c. Fetch existing files from GitHub to skip already pushed ones (for resume)
+          const existingFiles = await getRepoTree(accessToken, owner, repoName);
+          const pendingFilesStructure = fileStructure.filter(f => !existingFiles.includes(f.path));
+          
+          if (pendingFilesStructure.length === 0) {
+            sendEvent({
+              type: 'progress',
+              project: repoName,
+              step: 'skipping',
+              message: 'All files already exist in repository. Skipping...',
+              progress: Math.round(((pi + 0.9) / totalProjects) * 100),
+              projectProgress: 90,
+            });
+          } else {
+            // 3d. Schedule commits for remaining files
+            const totalCommits = Math.max(
+              3,
+              Math.ceil(pendingFilesStructure.length / 2) + 2
+            );
+            const commitDates = scheduleCommits(startDate, endDate, totalCommits, scheduleProfile);
+            
+            // Distribute pending files across commits
+            const filesPerCommit = distributeFiles(pendingFilesStructure, commitDates.length);
+            const projectContext = `Project: ${name}\nDescription: ${description}\nTech Stack: ${(techStack || []).join(', ')}\nFiles: ${fileStructure.map((f) => f.path).join(', ')}`;
+            let generatedCount = 0;
 
-          // 3e. Push backdated commits with generated files
-          sendEvent({
-            type: 'progress',
-            project: repoName,
-            step: 'committing',
-            message: `Pushing ${commitDates.length} backdated commits...`,
-            progress: Math.round(((pi + 0.7) / totalProjects) * 100),
-            projectProgress: 65,
-          });
+            // 3e. Generate and commit in chunks
+            for (let ci = 0; ci < commitDates.length; ci++) {
+              const commitFileStructure = filesPerCommit[ci];
+              if (!commitFileStructure || commitFileStructure.length === 0) continue;
 
-          // Distribute files across commits
-          const filesPerCommit = distributeFiles(generatedFiles, commitDates.length);
+              const generatedCommitFiles = [];
+              
+              // Generate all files for this commit
+              for (let fi = 0; fi < commitFileStructure.length; fi++) {
+                const file = commitFileStructure[fi];
+                generatedCount++;
 
-          for (let ci = 0; ci < commitDates.length; ci++) {
-            const commitFiles = filesPerCommit[ci];
-            if (!commitFiles || commitFiles.length === 0) continue;
+                sendEvent({
+                  type: 'progress',
+                  project: repoName,
+                  step: 'generating',
+                  file: file.path,
+                  message: `Generating ${file.path} (${generatedCount}/${pendingFilesStructure.length})...`,
+                  progress: Math.round(((pi + 0.2 + (0.5 * generatedCount / pendingFilesStructure.length)) / totalProjects) * 100),
+                  projectProgress: Math.round(15 + (55 * generatedCount / pendingFilesStructure.length)),
+                });
 
-            const commitMessage = generateCommitMessage(commitFiles, ci === 0, persona);
-            const commitDate = commitDates[ci];
+                try {
+                  const content = await generateFileContent(
+                    geminiApiKey,
+                    name,
+                    file.path,
+                    projectContext,
+                    project.estimatedComplexity || 'medium'
+                  );
 
-            try {
-              await createBackdatedCommit(
-                accessToken,
-                owner,
-                repoName,
-                commitFiles,
-                commitMessage,
-                commitDate,
-                userEmail
-              );
+                  generatedCommitFiles.push({
+                    path: file.path,
+                    content,
+                  });
+                } catch (error) {
+                  console.error(`[generate] Failed to generate ${file.path}:`, error);
+                  sendEvent({
+                    type: 'warning',
+                    project: repoName,
+                    file: file.path,
+                    message: `Skipped ${file.path}: ${error.message}`,
+                  });
+                }
+              }
 
-              sendEvent({
-                type: 'progress',
-                project: repoName,
-                step: 'committing',
-                message: `Commit ${ci + 1}/${commitDates.length}: ${commitMessage}`,
-                commitIndex: ci + 1,
-                totalCommits: commitDates.length,
-                progress: Math.round(((pi + 0.7 + (0.3 * (ci + 1) / commitDates.length)) / totalProjects) * 100),
-                projectProgress: Math.round(65 + (35 * (ci + 1) / commitDates.length)),
-              });
+              if (generatedCommitFiles.length === 0) continue;
 
-              // Small delay between commits to avoid rate limiting
-              await sleep(500);
-            } catch (error) {
-              console.error(`[generate] Commit ${ci + 1} failed:`, error);
-              sendEvent({
-                type: 'warning',
-                project: repoName,
-                message: `Commit ${ci + 1} failed: ${error.message}`,
-              });
+              const commitMessage = generateCommitMessage(generatedCommitFiles, existingFiles.length === 0 && ci === 0, persona);
+              const commitDate = commitDates[ci];
+
+              try {
+                await createBackdatedCommit(
+                  accessToken,
+                  owner,
+                  repoName,
+                  generatedCommitFiles,
+                  commitMessage,
+                  commitDate,
+                  userEmail
+                );
+
+                sendEvent({
+                  type: 'progress',
+                  project: repoName,
+                  step: 'committing',
+                  message: `Pushed Commit ${ci + 1}/${commitDates.length}: ${commitMessage}`,
+                  progress: Math.round(((pi + 0.7 + (0.2 * (ci + 1) / commitDates.length)) / totalProjects) * 100),
+                  projectProgress: Math.round(70 + (20 * (ci + 1) / commitDates.length)),
+                });
+
+                await sleep(500);
+              } catch (error) {
+                console.error(`[generate] Commit ${ci + 1} failed:`, error);
+                sendEvent({
+                  type: 'warning',
+                  project: repoName,
+                  message: `Commit ${ci + 1} failed: ${error.message}`,
+                });
+              }
             }
           }
 
