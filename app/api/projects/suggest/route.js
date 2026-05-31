@@ -1,23 +1,41 @@
 import { getProjectsBySkills, getSkillCategories } from '@/lib/project-templates';
+import { generateProjectSuggestions } from '@/lib/gemini';
 
 /**
- * GET /api/projects/suggest?skills=react,python
+ * POST /api/projects/suggest
  *
  * Returns project suggestions filtered by skill categories.
- * Query params:
- *   - skills: comma-separated list of skills (optional, returns all if omitted)
+ * Body params:
+ *   - skills: array of skills
+ *   - geminiApiKey: API key to generate dynamic suggestions (optional)
  * Response: { projects: [...], categories: [...] }
  */
-export async function GET(request) {
+export async function POST(request) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const skillsParam = searchParams.get('skills');
+    const body = await request.json();
+    const skills = body.skills || [];
+    const geminiApiKey = body.geminiApiKey;
 
-    const skills = skillsParam
-      ? skillsParam.split(',').map((s) => s.trim()).filter(Boolean)
-      : [];
+    let projects = [];
 
-    const projects = getProjectsBySkills(skills);
+    // If Gemini key is provided, generate dynamic suggestions
+    if (geminiApiKey) {
+      try {
+        const dynamicProjects = await generateProjectSuggestions(geminiApiKey, skills.length > 0 ? skills : ['javascript', 'web']);
+        
+        // Ensure some static ones are also included to guarantee variety
+        const staticProjects = getProjectsBySkills(skills);
+        
+        // Mix them: 6 dynamic + 2 static
+        projects = [...dynamicProjects, ...staticProjects.slice(0, 2)];
+      } catch (err) {
+        console.error('[projects/suggest] Gemini fallback, using static', err);
+        projects = getProjectsBySkills(skills);
+      }
+    } else {
+      projects = getProjectsBySkills(skills);
+    }
+
     const categories = getSkillCategories();
 
     return Response.json({
@@ -33,3 +51,4 @@ export async function GET(request) {
     );
   }
 }
+

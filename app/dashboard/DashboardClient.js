@@ -253,7 +253,7 @@ function StepSkillsSetup({ selectedSkills, setSelectedSkills, geminiKey, setGemi
 /* ================================================================
    STEP 2: Project Selection
    ================================================================ */
-function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedProjects, onNext, onBack }) {
+function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedProjects, onNext, onBack, geminiKey }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCustomForm, setShowCustomForm] = useState(false);
@@ -266,9 +266,11 @@ function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedPro
   const fetchSuggestions = useCallback(async () => {
     setLoading(true);
     try {
-      // Always fetch all matching projects for the skills
-      const url = `/api/projects/suggest?skills=${selectedSkills.join(',')}`;
-      const res = await fetch(url);
+      const res = await fetch('/api/projects/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skills: selectedSkills, geminiApiKey: geminiKey })
+      });
       const data = await res.json();
       let projects = data.projects || [];
       
@@ -1673,6 +1675,7 @@ export default function DashboardClient({ session }) {
             selectedSkills={selectedSkills}
             selectedProjects={selectedProjects}
             setSelectedProjects={setSelectedProjects}
+            geminiKey={geminiKey}
             onNext={goNext}
             onBack={goBack}
           />
