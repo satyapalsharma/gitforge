@@ -33,14 +33,14 @@ export async function POST(request) {
   let body;
   try {
     body = await request.json();
-  } catch {
+  } catch (error) {
     return Response.json(
       { error: 'Invalid JSON in request body' },
       { status: 400 }
     );
   }
 
-  const { projects, startDate, endDate, geminiApiKey, persona = 'professional' } = body;
+  const { projects, startDate, endDate, geminiApiKey, persona = 'professional', scheduleProfile = 'balanced' } = body;
 
   if (!projects || !Array.isArray(projects) || projects.length === 0) {
     return Response.json(
@@ -238,7 +238,7 @@ export async function POST(request) {
             3,
             Math.ceil(generatedFiles.length / 2) + 2
           );
-          const commitDates = scheduleCommits(startDate, endDate, totalCommits);
+          const commitDates = scheduleCommits(startDate, endDate, totalCommits, scheduleProfile);
 
           // 3e. Push backdated commits with generated files
           sendEvent({

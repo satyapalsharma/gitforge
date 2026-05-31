@@ -664,7 +664,7 @@ function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedPro
 /* ================================================================
    STEP 3: Review Estimates & Date Range
    ================================================================ */
-function StepReviewEstimate({ selectedProjects, dateRange, setDateRange, persona, setPersona, onNext, onBack, setSelectedProjects }) {
+function StepReviewEstimate({ selectedProjects, dateRange, setDateRange, persona, setPersona, scheduleProfile, setScheduleProfile, onNext, onBack, setSelectedProjects }) {
   const [estimates, setEstimates] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -822,6 +822,32 @@ function StepReviewEstimate({ selectedProjects, dateRange, setDateRange, persona
               <option value="emoji">Emoji-heavy 🚀 (Fun & descriptive)</option>
               <option value="terse">Terse (Very short, e.g. "fix", "upd")</option>
               <option value="chaotic">Chaotic (e.g. "hopefully this passes lol")</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
+            <label htmlFor="schedule-select" style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              Working Hours Profile
+            </label>
+            <select
+              id="schedule-select"
+              value={scheduleProfile}
+              onChange={(e) => setScheduleProfile(e.target.value)}
+              style={{
+                padding: '10px 14px',
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                color: 'var(--text-primary)',
+                fontSize: 'var(--text-sm)',
+                outline: 'none',
+                width: '100%',
+              }}
+            >
+              <option value="balanced">Balanced (Evenly spread, mostly days)</option>
+              <option value="9-to-5">9-to-5 (Strictly business hours on weekdays)</option>
+              <option value="weekend-warrior">Weekend Warrior (Heavy weekends + some evenings)</option>
+              <option value="night-owl">Night Owl (Late night coding sessions)</option>
             </select>
           </div>
 
@@ -1007,7 +1033,7 @@ function MiniContributionGraph({ data }) {
 /* ================================================================
    STEP 4: Generation Progress
    ================================================================ */
-function StepGeneration({ selectedProjects, dateRange, geminiKey, session, persona }) {
+function StepGeneration({ selectedProjects, dateRange, geminiKey, session, persona, scheduleProfile }) {
   const [progress, setProgress] = useState({
     status: 'idle',
     currentProject: '',
@@ -1033,6 +1059,7 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
           endDate: dateRange.endDate,
           geminiApiKey: geminiKey,
           persona: persona,
+          scheduleProfile: scheduleProfile,
         }),
       });
 
@@ -1382,6 +1409,7 @@ export default function DashboardClient({ session }) {
     endDate: '',
   });
   const [persona, setPersona] = useState('professional');
+  const [scheduleProfile, setScheduleProfile] = useState('balanced');
 
   const goNext = useCallback(() => {
     setCurrentStep(prev => Math.min(prev + 1, 3));
@@ -1485,6 +1513,8 @@ export default function DashboardClient({ session }) {
             setDateRange={setDateRange}
             persona={persona}
             setPersona={setPersona}
+            scheduleProfile={scheduleProfile}
+            setScheduleProfile={setScheduleProfile}
             onNext={goNext}
             onBack={goBack}
             setSelectedProjects={setSelectedProjects}
@@ -1497,6 +1527,7 @@ export default function DashboardClient({ session }) {
             geminiKey={geminiKey}
             session={session}
             persona={persona}
+            scheduleProfile={scheduleProfile}
           />
         )}
       </main>
