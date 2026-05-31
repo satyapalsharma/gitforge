@@ -664,7 +664,7 @@ function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedPro
 /* ================================================================
    STEP 3: Review Estimates & Date Range
    ================================================================ */
-function StepReviewEstimate({ selectedProjects, dateRange, setDateRange, onNext, onBack, setSelectedProjects }) {
+function StepReviewEstimate({ selectedProjects, dateRange, setDateRange, persona, setPersona, onNext, onBack, setSelectedProjects }) {
   const [estimates, setEstimates] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -772,11 +772,11 @@ function StepReviewEstimate({ selectedProjects, dateRange, setDateRange, onNext,
             ))}
           </div>
 
-          {/* Date Range */}
+          {/* Date Range & Persona */}
           <h3 style={{ fontWeight: 700, marginTop: 'var(--space-8)', marginBottom: 'var(--space-4)', fontSize: 'var(--text-lg)' }}>
-            Backdate Period
+            Generation Settings
           </h3>
-          <div className="date-range-picker">
+          <div className="date-range-picker" style={{ marginBottom: 'var(--space-4)' }}>
             <div className="date-input-group">
               <label htmlFor="start-date">Start Date</label>
               <input
@@ -797,6 +797,32 @@ function StepReviewEstimate({ selectedProjects, dateRange, setDateRange, onNext,
                 onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
               />
             </div>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            <label htmlFor="persona-select" style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              Commit Persona (AI Style)
+            </label>
+            <select
+              id="persona-select"
+              value={persona}
+              onChange={(e) => setPersona(e.target.value)}
+              style={{
+                padding: '10px 14px',
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                color: 'var(--text-primary)',
+                fontSize: 'var(--text-sm)',
+                outline: 'none',
+                width: '100%',
+              }}
+            >
+              <option value="professional">Professional (Standard conventional commits)</option>
+              <option value="emoji">Emoji-heavy 🚀 (Fun & descriptive)</option>
+              <option value="terse">Terse (Very short, e.g. "fix", "upd")</option>
+              <option value="chaotic">Chaotic (e.g. "hopefully this passes lol")</option>
+            </select>
           </div>
 
           {/* Contribution Preview */}
@@ -981,7 +1007,7 @@ function MiniContributionGraph({ data }) {
 /* ================================================================
    STEP 4: Generation Progress
    ================================================================ */
-function StepGeneration({ selectedProjects, dateRange, geminiKey, session }) {
+function StepGeneration({ selectedProjects, dateRange, geminiKey, session, persona }) {
   const [progress, setProgress] = useState({
     status: 'idle',
     currentProject: '',
@@ -1006,6 +1032,7 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session }) {
           startDate: dateRange.startDate,
           endDate: dateRange.endDate,
           geminiApiKey: geminiKey,
+          persona: persona,
         }),
       });
 
@@ -1354,6 +1381,7 @@ export default function DashboardClient({ session }) {
     startDate: '',
     endDate: '',
   });
+  const [persona, setPersona] = useState('professional');
 
   const goNext = useCallback(() => {
     setCurrentStep(prev => Math.min(prev + 1, 3));
@@ -1455,6 +1483,8 @@ export default function DashboardClient({ session }) {
             selectedProjects={selectedProjects}
             dateRange={dateRange}
             setDateRange={setDateRange}
+            persona={persona}
+            setPersona={setPersona}
             onNext={goNext}
             onBack={goBack}
             setSelectedProjects={setSelectedProjects}
@@ -1466,6 +1496,7 @@ export default function DashboardClient({ session }) {
             dateRange={dateRange}
             geminiKey={geminiKey}
             session={session}
+            persona={persona}
           />
         )}
       </main>

@@ -40,7 +40,7 @@ export async function POST(request) {
     );
   }
 
-  const { projects, startDate, endDate, geminiApiKey } = body;
+  const { projects, startDate, endDate, geminiApiKey, persona = 'professional' } = body;
 
   if (!projects || !Array.isArray(projects) || projects.length === 0) {
     return Response.json(
@@ -257,7 +257,7 @@ export async function POST(request) {
             const commitFiles = filesPerCommit[ci];
             if (!commitFiles || commitFiles.length === 0) continue;
 
-            const commitMessage = generateCommitMessage(commitFiles, ci === 0);
+            const commitMessage = generateCommitMessage(commitFiles, ci === 0, persona);
             const commitDate = commitDates[ci];
 
             try {
@@ -378,16 +378,60 @@ function distributeFiles(files, commitCount) {
 }
 
 /**
- * Generate a realistic commit message based on the files being committed.
+ * Generate a realistic commit message based on the files being committed and the selected persona.
  * @param {Array<{path: string}>} files - Files in this commit
  * @param {boolean} isInitial - Whether this is the initial commit
+ * @param {string} persona - The chosen AI commit persona
  * @returns {string} Commit message
  */
-function generateCommitMessage(files, isInitial) {
+function generateCommitMessage(files, isInitial, persona = 'professional') {
   if (isInitial) {
+    if (persona === 'emoji') return '🎉 Initial project setup';
+    if (persona === 'terse') return 'init';
+    if (persona === 'chaotic') return 'here we go again lol';
     return 'Initial project setup';
   }
 
+  const PERSONA_TEMPLATES = {
+    professional: {
+      tests: 'test: add unit tests for components',
+      styles: 'style: update layout and design tokens',
+      docs: 'docs: update documentation',
+      config: 'chore: update project configuration',
+      core: 'feat: implement core functionality',
+      prefixes: ['feat: add', 'fix: resolve issue in', 'chore: update', 'refactor: improve', 'docs: update'],
+      fallback: (len) => `feat: implement ${len} new files`
+    },
+    emoji: {
+      tests: '🧪 add unit tests for components',
+      styles: '🎨 update layout and design tokens',
+      docs: '📝 update documentation',
+      config: '⚙️ update project configuration',
+      core: '✨ implement core functionality',
+      prefixes: ['✨ add', '🐛 fix', '🔨 refactor', '📦 build'],
+      fallback: (len) => `✨ add ${len} new files`
+    },
+    terse: {
+      tests: 'tests',
+      styles: 'css',
+      docs: 'readme',
+      config: 'config',
+      core: 'src',
+      prefixes: ['add', 'fix', 'upd'],
+      fallback: (len) => `upd ${len} f`
+    },
+    chaotic: {
+      tests: 'hopefully this passes lol',
+      styles: 'make it look less ugly',
+      docs: 'i should write docs more often',
+      config: 'pls work',
+      core: 'stuff',
+      prefixes: ['asdf', 'wip', 'did a thing', 'stuff'],
+      fallback: (len) => `more stuff (${len})`
+    }
+  };
+
+  const template = PERSONA_TEMPLATES[persona] || PERSONA_TEMPLATES.professional;
   const filePaths = files.map((f) => f.path);
 
   // Detect patterns for meaningful messages
@@ -396,20 +440,18 @@ function generateCommitMessage(files, isInitial) {
   const hasDocs = filePaths.some((p) => p.includes('README') || p.includes('docs'));
   const hasConfig = filePaths.some((p) => p.includes('config') || p.includes('.env'));
 
-  if (hasTests) return 'Add unit tests';
-  if (hasStyles) return 'Add styles and layout';
-  if (hasDocs) return 'Update documentation';
-  if (hasConfig) return 'Update configuration';
+  if (hasTests) return template.tests;
+  if (hasStyles) return template.styles;
+  if (hasDocs) return template.docs;
+  if (hasConfig) return template.config;
 
   // Describe based on directory
   const dirs = [...new Set(filePaths.map((p) => p.split('/')[0]))];
   if (dirs.length === 1 && dirs[0] === 'src') {
-    return 'Add core source files';
+    return template.core;
   }
 
-  const prefixes = [
-    'Add', 'Implement', 'Create', 'Set up', 'Build',
-  ];
+  const prefixes = template.prefixes;
   const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
 
   if (files.length === 1) {
@@ -417,7 +459,7 @@ function generateCommitMessage(files, isInitial) {
     return `${prefix} ${filename}`;
   }
 
-  return `${prefix} ${files.length} files`;
+  return template.fallback(files.length);
 }
 
 /**
