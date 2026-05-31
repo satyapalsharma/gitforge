@@ -1184,8 +1184,9 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
     error: null,
   });
   const cachedStructuresRef = useRef({});
+  const completedReposRef = useRef([]);
 
-  const startGeneration = useCallback(async () => {
+  const runGeneration = useCallback(async (projectsToSend) => {
     setProgress(prev => ({ ...prev, status: 'running', logs: [...prev.logs, { time: new Date().toISOString(), msg: '🚀 Starting generation pipeline...' }] }));
 
     try {
@@ -1193,14 +1194,14 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          projects: selectedProjects,
+          projects: projectsToSend,
           startDate: dateRange.startDate,
           endDate: dateRange.endDate,
           geminiApiKey: geminiKey,
           persona: persona,
           scheduleProfile: scheduleProfile,
           simulatePRs: simulatePRs,
-          completedProjects: progress.completedRepos.map(r => r.name),
+          completedProjects: completedReposRef.current.map(r => r.name),
           cachedStructures: cachedStructuresRef.current,
         }),
       });
@@ -1256,7 +1257,9 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
 
               const newCompletedRepos = [...prev.completedRepos];
               if (data.type === 'project-complete' && data.repoUrl) {
-                newCompletedRepos.push({ name: data.project, url: data.repoUrl });
+                const newEntry = { name: data.project, url: data.repoUrl };
+                newCompletedRepos.push(newEntry);
+                completedReposRef.current = [...completedReposRef.current, newEntry];
               }
 
               return {
@@ -1283,7 +1286,22 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
         logs: [...prev.logs, { time: new Date().toISOString(), msg: `❌ Error: ${err.message}` }],
       }));
     }
-  }, [selectedProjects, dateRange, geminiKey]);
+  }, [dateRange, geminiKey, persona, scheduleProfile, simulatePRs]);
+
+  const startGeneration = useCallback(() => {
+    return runGeneration(selectedProjects);
+  }, [runGeneration, selectedProjects]);
+
+  const resumeSingleProject = useCallback((project) => {
+    // Reset this project's status to pending
+    setProgress(prev => {
+      const newProjectProgress = { ...prev.projectProgress };
+      const projectKey = project.id;
+      newProjectProgress[projectKey] = { status: 'generating', progress: 0, currentFile: '' };
+      return { ...prev, projectProgress: newProjectProgress };
+    });
+    return runGeneration([project]);
+  }, [runGeneration]);
 
   return (
     <div className="animate-fade-in-up generation-container">
@@ -1433,6 +1451,27 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
               <p style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', marginTop: 'var(--space-2)' }}>
                 📄 {pp.currentFile}
               </p>
+            )}
+            {pp.status === 'failed' && progress.status !== 'running' && (
+              <button
+                onClick={() => resumeSingleProject(project)}
+                style={{
+                  marginTop: 'var(--space-3)',
+                  padding: '6px 16px',
+                  background: 'transparent',
+                  border: '1px solid var(--accent-purple)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--accent-purple)',
+                  fontSize: 'var(--text-xs)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <Icons.Zap /> Retry This Project
+              </button>
             )}
           </div>
         );
