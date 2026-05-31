@@ -1183,6 +1183,7 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
     completedRepos: [],
     error: null,
   });
+  const [cachedStructures, setCachedStructures] = useState({});
 
   const startGeneration = useCallback(async () => {
     setProgress(prev => ({ ...prev, status: 'running', logs: [...prev.logs, { time: new Date().toISOString(), msg: '🚀 Starting generation pipeline...' }] }));
@@ -1200,6 +1201,7 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
           scheduleProfile: scheduleProfile,
           simulatePRs: simulatePRs,
           completedProjects: progress.completedRepos.map(r => r.name),
+          cachedStructures: cachedStructures,
         }),
       });
 
@@ -1224,6 +1226,11 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
         for (const line of lines) {
           try {
             const data = JSON.parse(line.replace('data: ', ''));
+
+            // Cache the project structure for resume
+            if (data.type === 'structure-cached' && data.project && data.structure) {
+              setCachedStructures(prev => ({ ...prev, [data.project]: data.structure }));
+            }
 
             setProgress(prev => {
               const newLogs = [...prev.logs];

@@ -50,6 +50,7 @@ export async function POST(request) {
   const persona = body.persona || 'professional';
   const scheduleProfile = body.scheduleProfile || 'balanced';
   const simulatePRs = body.simulatePRs || false;
+  const cachedStructures = body.cachedStructures || {}; // { repoName: [{path, description}] }
 
   const projectsToProcess = projects.filter(p => {
     const repoName = p.name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
@@ -142,40 +143,62 @@ export async function POST(request) {
             projectProgress: 0,
           });
 
-          // 3a. Generate project structure via Gemini
-          sendEvent({
-            type: 'progress',
-            project: repoName,
-            step: 'generating-structure',
-            message: 'Generating project structure...',
-            progress: Math.round(((pi + 0.1) / totalProjects) * 100),
-            projectProgress: 5,
-          });
-
-          const otherProjects = projectsToProcess.filter((p, i) => i !== pi).map(p => p.name);
-          let interconnectivityContext = '';
-          if (otherProjects.length > 0) {
-            interconnectivityContext = `This project is part of a larger interconnected system being generated, which includes: ${otherProjects.join(', ')}. Where appropriate (e.g., in README, API endpoints, package configs, or env variables), add configuration or mentions that reference these other services to simulate microservice/interconnected architecture.`;
-          }
-
+          // 3a. Generate project structure (or use cached from previous run)
           let fileStructure;
-          try {
-            fileStructure = await generateProjectStructure(
-              geminiApiKey,
-              name,
-              description,
-              techStack || [],
-              project.estimatedComplexity || 'medium',
-              interconnectivityContext
-            );
-          } catch (error) {
+          
+          if (cachedStructures[repoName] && cachedStructures[repoName].length > 0) {
+            // Resume path: use the structure from the previous run
+            fileStructure = cachedStructures[repoName];
             sendEvent({
-              type: 'error',
+              type: 'progress',
               project: repoName,
-              message: `Failed to generate structure: ${error.message}`,
+              step: 'generating-structure',
+              message: `Using cached structure (${fileStructure.length} files)...`,
+              progress: Math.round(((pi + 0.1) / totalProjects) * 100),
+              projectProgress: 5,
             });
-            continue; // Skip this project, continue with next
+          } else {
+            // First run: generate from Gemini
+            sendEvent({
+              type: 'progress',
+              project: repoName,
+              step: 'generating-structure',
+              message: 'Generating project structure...',
+              progress: Math.round(((pi + 0.1) / totalProjects) * 100),
+              projectProgress: 5,
+            });
+
+            const otherProjects = projectsToProcess.filter((p, i) => i !== pi).map(p => p.name);
+            let interconnectivityContext = '';
+            if (otherProjects.length > 0) {
+              interconnectivityContext = `This project is part of a larger interconnected system being generated, which includes: ${otherProjects.join(', ')}. Where appropriate (e.g., in README, API endpoints, package configs, or env variables), add configuration or mentions that reference these other services to simulate microservice/interconnected architecture.`;
+            }
+
+            try {
+              fileStructure = await generateProjectStructure(
+                geminiApiKey,
+                name,
+                description,
+                techStack || [],
+                project.estimatedComplexity || 'medium',
+                interconnectivityContext
+              );
+            } catch (error) {
+              sendEvent({
+                type: 'error',
+                project: repoName,
+                message: `Failed to generate structure: ${error.message}`,
+              });
+              continue;
+            }
           }
+
+          // Send the structure to the frontend so it can cache it for resume
+          sendEvent({
+            type: 'structure-cached',
+            project: repoName,
+            structure: fileStructure,
+          });
 
           // 3b. Create the GitHub repo immediately
           sendEvent({
