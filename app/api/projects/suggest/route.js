@@ -15,19 +15,19 @@ export async function POST(request) {
     const body = await request.json();
     const skills = body.skills || [];
     const geminiApiKey = body.geminiApiKey;
+    const existingNames = body.existingNames || [];
 
     let projects = [];
 
-    // If Gemini key is provided, generate dynamic suggestions
+    // If Gemini key is provided, generate ALL suggestions via LLM
     if (geminiApiKey) {
       try {
-        const dynamicProjects = await generateProjectSuggestions(geminiApiKey, skills.length > 0 ? skills : ['javascript', 'web']);
-        
-        // Ensure some static ones are also included to guarantee variety
-        const staticProjects = getProjectsBySkills(skills);
-        
-        // Mix them: 6 dynamic + 2 static
-        projects = [...dynamicProjects, ...staticProjects.slice(0, 2)];
+        const dynamicProjects = await generateProjectSuggestions(
+          geminiApiKey,
+          skills.length > 0 ? skills : ['javascript', 'web'],
+          existingNames
+        );
+        projects = dynamicProjects;
       } catch (err) {
         console.error('[projects/suggest] Gemini fallback, using static', err);
         projects = getProjectsBySkills(skills);
@@ -51,4 +51,3 @@ export async function POST(request) {
     );
   }
 }
-

@@ -262,36 +262,43 @@ function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedPro
   const [customTech, setCustomTech] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('all');
   const [customComplexity, setCustomComplexity] = useState('medium');
+  const suggestionsRef = useRef([]);
 
-  const fetchSuggestions = useCallback(async () => {
+  const fetchSuggestions = useCallback(async (append = false) => {
     setLoading(true);
     try {
+      // On append, send existing names so LLM generates different ones
+      const currentNames = append ? suggestionsRef.current.map(s => s.name) : [];
       const res = await fetch('/api/projects/suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ skills: selectedSkills, geminiApiKey: geminiKey })
+        body: JSON.stringify({
+          skills: selectedSkills,
+          geminiApiKey: geminiKey,
+          existingNames: currentNames,
+        })
       });
       const data = await res.json();
-      let projects = data.projects || [];
-      
-      // We always shuffle the array to give a random feel, especially on "Refresh"
-      for (let i = projects.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [projects[i], projects[j]] = [projects[j], projects[i]];
-      }
+      const newProjects = data.projects || [];
 
-      // If we have a lot of projects, just show 8 at a time so the UI isn't cluttered
-      // and "Shuffle/Refresh" actually shows a different set of projects.
-      if (projects.length > 8) {
-        projects = projects.slice(0, 8);
-      }
-      
-      setSuggestions(projects);
+      setSuggestions(prev => {
+        let result;
+        if (!append) {
+          result = newProjects;
+        } else {
+          // Append and deduplicate by name (case-insensitive)
+          const existingNames = new Set(prev.map(p => p.name.toLowerCase()));
+          const uniqueNew = newProjects.filter(p => !existingNames.has(p.name.toLowerCase()));
+          result = [...prev, ...uniqueNew];
+        }
+        suggestionsRef.current = result;
+        return result;
+      });
     } catch (e) {
       console.error('Failed to fetch suggestions:', e);
     }
     setLoading(false);
-  }, [selectedSkills]);
+  }, [selectedSkills, geminiKey]);
 
   useEffect(() => {
     fetchSuggestions();
