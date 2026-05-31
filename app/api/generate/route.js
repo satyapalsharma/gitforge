@@ -144,7 +144,8 @@ export async function POST(request) {
               geminiApiKey,
               name,
               description,
-              techStack || []
+              techStack || [],
+              project.estimatedComplexity || 'medium'
             );
           } catch (error) {
             sendEvent({
@@ -179,7 +180,8 @@ export async function POST(request) {
                 geminiApiKey,
                 name,
                 file.path,
-                projectContext
+                projectContext,
+                project.estimatedComplexity || 'medium'
               );
 
               generatedFiles.push({

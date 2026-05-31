@@ -315,7 +315,7 @@ function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedPro
 
   const addCustomProject = useCallback(() => {
     if (!customName.trim() || !customDesc.trim()) return;
-    const complexityFileMap = { simple: 5, medium: 10, complex: 18 };
+    const complexityFileMap = { simple: 5, medium: 10, complex: 18, 'very-complex': 75 };
     const customProject = {
       id: `custom-${Date.now()}`,
       name: customName.trim(),
@@ -339,6 +339,7 @@ function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedPro
     { value: 'simple', label: 'Simple', icon: '🟢' },
     { value: 'medium', label: 'Medium', icon: '🟡' },
     { value: 'complex', label: 'Complex', icon: '🔴' },
+    { value: 'very-complex', label: 'Very Complex', icon: '🔥' },
   ];
 
   return (
@@ -494,7 +495,7 @@ function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedPro
             {/* Complexity selector for custom project */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
               <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Complexity:</span>
-              {['simple', 'medium', 'complex'].map(level => (
+              {['simple', 'medium', 'complex', 'very-complex'].map(level => (
                 <button
                   key={level}
                   type="button"
@@ -502,14 +503,14 @@ function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedPro
                   style={{
                     padding: '6px 14px',
                     background: customComplexity === level
-                      ? (level === 'simple' ? 'rgba(63, 185, 80, 0.15)' : level === 'medium' ? 'rgba(210, 153, 34, 0.15)' : 'rgba(248, 81, 73, 0.15)')
+                      ? (level === 'simple' ? 'rgba(63, 185, 80, 0.15)' : level === 'medium' ? 'rgba(210, 153, 34, 0.15)' : level === 'complex' ? 'rgba(248, 81, 73, 0.15)' : 'rgba(163, 113, 247, 0.15)')
                       : 'var(--bg-tertiary)',
                     border: `1px solid ${customComplexity === level
-                      ? (level === 'simple' ? 'rgba(63, 185, 80, 0.4)' : level === 'medium' ? 'rgba(210, 153, 34, 0.4)' : 'rgba(248, 81, 73, 0.4)')
+                      ? (level === 'simple' ? 'rgba(63, 185, 80, 0.4)' : level === 'medium' ? 'rgba(210, 153, 34, 0.4)' : level === 'complex' ? 'rgba(248, 81, 73, 0.4)' : 'rgba(163, 113, 247, 0.4)')
                       : 'var(--border-default)'}`,
                     borderRadius: 'var(--radius-full)',
                     color: customComplexity === level
-                      ? (level === 'simple' ? 'var(--success)' : level === 'medium' ? 'var(--warning)' : 'var(--danger)')
+                      ? (level === 'simple' ? 'var(--success)' : level === 'medium' ? 'var(--warning)' : level === 'complex' ? 'var(--danger)' : '#a371f7')
                       : 'var(--text-tertiary)',
                     fontSize: 'var(--text-xs)',
                     fontWeight: customComplexity === level ? 700 : 500,
@@ -518,7 +519,7 @@ function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedPro
                     transition: 'all var(--transition-fast)',
                   }}
                 >
-                  {level === 'simple' ? '🟢' : level === 'medium' ? '🟡' : '🔴'} {level}
+                  {level === 'simple' ? '🟢' : level === 'medium' ? '🟡' : level === 'complex' ? '🔴' : '🔥'} {level.replace('-', ' ')}
                 </button>
               ))}
             </div>
@@ -604,11 +605,13 @@ function StepProjectSelection({ selectedSkills, selectedProjects, setSelectedPro
                     borderRadius: 'var(--radius-full)',
                     fontSize: 'var(--text-xs)',
                     background: project.estimatedComplexity === 'simple' ? 'rgba(63, 185, 80, 0.15)' :
-                      project.estimatedComplexity === 'medium' ? 'rgba(210, 153, 34, 0.15)' : 'rgba(248, 81, 73, 0.15)',
+                      project.estimatedComplexity === 'medium' ? 'rgba(210, 153, 34, 0.15)' :
+                      project.estimatedComplexity === 'complex' ? 'rgba(248, 81, 73, 0.15)' : 'rgba(163, 113, 247, 0.15)',
                     color: project.estimatedComplexity === 'simple' ? 'var(--success)' :
-                      project.estimatedComplexity === 'medium' ? 'var(--warning)' : 'var(--danger)',
+                      project.estimatedComplexity === 'medium' ? 'var(--warning)' :
+                      project.estimatedComplexity === 'complex' ? 'var(--danger)' : '#a371f7',
                   }}>
-                    {project.estimatedComplexity}
+                    {project.estimatedComplexity.replace('-', ' ')}
                   </span>
                 </div>
               </div>
