@@ -199,7 +199,7 @@ export async function POST(request) {
             continue;
           }
 
-          await sleep(1000);
+          await sleep(3000); // GitHub needs time to initialize the repo after creation
 
           // 3c. Fetch existing files from GitHub to skip already pushed ones (for resume)
           const existingFiles = await getRepoTree(accessToken, owner, repoName);
@@ -226,6 +226,7 @@ export async function POST(request) {
             const filesPerCommit = distributeFiles(pendingFilesStructure, commitDates.length);
             const projectContext = `Project: ${name}\nDescription: ${description}\nTech Stack: ${(techStack || []).join(', ')}\nFiles: ${fileStructure.map((f) => f.path).join(', ')}`;
             let generatedCount = 0;
+            let totalFilesGenerated = existingFiles.length;
 
             // 3e. Generate and commit in chunks
             for (let ci = 0; ci < commitDates.length; ci++) {
@@ -263,6 +264,7 @@ export async function POST(request) {
                     path: file.path,
                     content,
                   });
+                  totalFilesGenerated++;
                 } catch (error) {
                   console.error(`[generate] Failed to generate ${file.path}:`, error);
                   sendEvent({
@@ -279,38 +281,56 @@ export async function POST(request) {
               const commitMessage = generateCommitMessage(generatedCommitFiles, existingFiles.length === 0 && ci === 0, persona);
               const commitDate = commitDates[ci];
 
-              try {
-                await createBackdatedCommit(
-                  accessToken,
-                  owner,
-                  repoName,
-                  generatedCommitFiles,
-                  commitMessage,
-                  commitDate,
-                  userEmail,
-                  simulatePRs
-                );
+              // Retry logic for commits (first commit often fails due to repo init delay)
+              let commitSuccess = false;
+              for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                  await createBackdatedCommit(
+                    accessToken,
+                    owner,
+                    repoName,
+                    generatedCommitFiles,
+                    commitMessage,
+                    commitDate,
+                    userEmail,
+                    simulatePRs
+                  );
+                  commitSuccess = true;
 
-                sendEvent({
-                  type: 'progress',
-                  project: repoName,
-                  step: 'committing',
-                  message: `Pushed Commit ${ci + 1}/${commitDates.length}: ${commitMessage}`,
-                  progress: Math.round(((pi + 0.7 + (0.2 * (ci + 1) / commitDates.length)) / totalProjects) * 100),
-                  projectProgress: Math.round(70 + (20 * (ci + 1) / commitDates.length)),
-                });
+                  sendEvent({
+                    type: 'progress',
+                    project: repoName,
+                    step: 'committing',
+                    message: `Pushed Commit ${ci + 1}/${commitDates.length}: ${commitMessage}`,
+                    progress: Math.round(((pi + 0.7 + (0.2 * (ci + 1) / commitDates.length)) / totalProjects) * 100),
+                    projectProgress: Math.round(70 + (20 * (ci + 1) / commitDates.length)),
+                  });
 
-                await sleep(500);
-              } catch (error) {
-                console.error(`[generate] Commit ${ci + 1} failed:`, error);
-                sendEvent({
-                  type: 'warning',
-                  project: repoName,
-                  message: `Commit ${ci + 1} failed: ${error.message}`,
-                });
+                  await sleep(500);
+                  break;
+                } catch (error) {
+                  console.error(`[generate] Commit ${ci + 1} attempt ${attempt + 1} failed:`, error);
+                  if (attempt < 2) {
+                    sendEvent({
+                      type: 'warning',
+                      project: repoName,
+                      message: `Commit ${ci + 1} failed (attempt ${attempt + 1}/3), retrying in ${(attempt + 1) * 2}s...`,
+                    });
+                    await sleep((attempt + 1) * 2000);
+                  } else {
+                    sendEvent({
+                      type: 'warning',
+                      project: repoName,
+                      message: `Commit ${ci + 1} failed after 3 attempts: ${error.message}`,
+                    });
+                  }
+                }
               }
             }
           }
+
+          // Track total files for completion event
+          const totalFilesInProject = fileStructure.length;
 
           // 3f. Generate and create fake issues
           sendEvent({
@@ -337,8 +357,7 @@ export async function POST(request) {
             project: repoName,
             repoUrl: repo.html_url,
             message: `Completed: ${name}`,
-            filesGenerated: generatedFiles.length,
-            commitsCreated: commitDates.length,
+            filesGenerated: totalFilesInProject,
           });
         }
 

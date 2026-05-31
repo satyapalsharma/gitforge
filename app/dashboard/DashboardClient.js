@@ -1171,7 +1171,7 @@ function MiniContributionGraph({ data }) {
 /* ================================================================
    STEP 4: Generation Progress
    ================================================================ */
-function StepGeneration({ selectedProjects, dateRange, geminiKey, session, persona, scheduleProfile }) {
+function StepGeneration({ selectedProjects, dateRange, geminiKey, session, persona, scheduleProfile, simulatePRs }) {
   const [progress, setProgress] = useState({
     status: 'idle',
     currentProject: '',
@@ -1198,6 +1198,7 @@ function StepGeneration({ selectedProjects, dateRange, geminiKey, session, perso
           geminiApiKey: geminiKey,
           persona: persona,
           scheduleProfile: scheduleProfile,
+          simulatePRs: simulatePRs,
           completedProjects: progress.completedRepos.map(r => r.name),
         }),
       });
