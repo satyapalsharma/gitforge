@@ -146,6 +146,13 @@ export async function POST(request) {
           // 3a. Generate project structure (or use cached from previous run)
           let fileStructure;
           
+          // Build interconnectivity context (always needed for file generation)
+          const otherProjects = projectsToProcess.filter((p, i) => i !== pi).map(p => p.name);
+          let interconnectivityContext = '';
+          if (otherProjects.length > 0) {
+            interconnectivityContext = `This project is part of a larger interconnected system being generated, which includes: ${otherProjects.join(', ')}. Where appropriate (e.g., in README, API endpoints, package configs, or env variables), add configuration or mentions that reference these other services to simulate microservice/interconnected architecture.`;
+          }
+
           if (cachedStructures[repoName] && cachedStructures[repoName].length > 0) {
             // Resume path: use the structure from the previous run
             fileStructure = cachedStructures[repoName];
@@ -167,12 +174,6 @@ export async function POST(request) {
               progress: Math.round(((pi + 0.1) / totalProjects) * 100),
               projectProgress: 5,
             });
-
-            const otherProjects = projectsToProcess.filter((p, i) => i !== pi).map(p => p.name);
-            let interconnectivityContext = '';
-            if (otherProjects.length > 0) {
-              interconnectivityContext = `This project is part of a larger interconnected system being generated, which includes: ${otherProjects.join(', ')}. Where appropriate (e.g., in README, API endpoints, package configs, or env variables), add configuration or mentions that reference these other services to simulate microservice/interconnected architecture.`;
-            }
 
             try {
               fileStructure = await generateProjectStructure(
